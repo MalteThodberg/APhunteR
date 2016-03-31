@@ -1,9 +1,17 @@
 Package: APhunteR
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Find Alternative Promoters in CAGE data
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
-Description: Find Alternative Promoters in CAGE data
-License: What license is it under?
+Author: Malte Thodberg
+Maintainer: <maltethodberg@gmail.com>
+Description: Use limma or edgeR to find and classify gene with alternative promoter usage
+Imports:
+	magrittr,
+	tidyr,
+	dplyr,
+	tibble,
+	purrr,
+	limma,
+	edgeR
+License: GPL-3
 LazyData: TRUE
