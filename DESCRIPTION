@@ -4,14 +4,16 @@ Title: Find Alternative Promoters in CAGE data
 Version: 0.1.0
 Author: Malte Thodberg
 Maintainer: <maltethodberg@gmail.com>
-Description: Use limma or edgeR to find and classify gene with alternative promoter usage
+Description: Use limma or edgeR to find and classify gene with alternative
+    promoter usage
 Imports:
-	magrittr,
-	tidyr,
-	dplyr,
-	tibble,
-	purrr,
-	limma,
-	edgeR
+    magrittr,
+    tidyr,
+    dplyr,
+    tibble,
+    purrr,
+    limma,
+    edgeR
 License: GPL-3
 LazyData: TRUE
+RoxygenNote: 5.0.1
