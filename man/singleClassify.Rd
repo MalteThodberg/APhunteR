@@ -2,7 +2,7 @@
 % Please edit documentation in R/edgeR_based.R
 \name{singleClassify}
 \alias{singleClassify}
-\title{Internal function: Test single contrast}
+\title{Internal function: Classify single contrast}
 \usage{
 singleClassify(con, p = 0.05, promoterTest = "both", geneTest = "both")
 }

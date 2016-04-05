@@ -1,8 +1,18 @@
-print.APfit <- function(o){
-	message("APfit object from the the APhunteR package")
-}
+#' #' @export
+#' print.APfit <- function(o){
+#' 	message("APfit object from the the APhunteR package")
+#' }
 
-summary.APfit <- function(o){
+#' Print basic info about APfit
+#'
+#' Short representation fo APfit object
+#'
+#' @param o APfit object
+#'
+#' @examples
+#' # ADD EXAMPLES HERE
+#' @export
+print.APfit <- function(o){
 	# Calculate some basic statistics
 	nPromoter <- nrow(fits$genes)
 	nGenes <- length(unique(fits$genes$geneIds))
@@ -27,15 +37,43 @@ summary.APfit <- function(o){
 	message("=======================================")
 }
 
-print.APtest <- function(o){
-	message("APtest object from the the APhunteR package")
-}
+#' #' @export
+#' print.APtest <- function(o){
+#' 	message("APtest object from the the APhunteR package")
+#' }
 
-summary.APtest <- function(o){
+#' Print basic info about APtest
+#'
+#' Short representation fo APtest object
+#'
+#' @param o APtest object
+#'
+#' @examples
+#' # ADD EXAMPLES HERE
+#' @export
+print.APtest <- function(o){
 	# Calculate some basic statistics
 	nContrast <- length(o)
 
 	# Message output
 	message("Alternative Promoter Usage (APU) tests:")
+	message(paste0("Number of contrasts: ", nContrast))
+}
+
+#' Print basic info about APclassify
+#'
+#' Short representation fo APclassify object
+#'
+#' @param o APClassify object
+#'
+#' @examples
+#' # ADD EXAMPLES HERE
+#' @export
+print.APclassify <- function(o){
+	# Calculate some basic statistics
+	nContrast <- length(o)
+
+	# Message output
+	message("Alternative Promoter Usage (APU) classifications:")
 	message(paste0("Number of contrasts: ", nContrast))
 }

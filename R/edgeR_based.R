@@ -6,7 +6,7 @@
 #' @param modelMatrix matrix: Full rank model matrix describing the experiment.
 #' @param geneIds character: Vector marking which genes promoters belong two.
 #'
-#' @import magrittr dplyr
+#' @import magrittr
 #'
 #' @return APfit object
 #' @examples
@@ -20,7 +20,7 @@ APfit <- function(promoterCounts, modelMatrix, geneIds){
 		# Check grouping column exists.
 
 		### Gene strucutre
-		geneStructure <- data_frame(promoterIds=rownames(promoterCounts),
+		geneStructure <- dplyr::data_frame(promoterIds=rownames(promoterCounts),
 																geneIds=geneIds)
 
 		### Sum before fitting models
@@ -28,9 +28,9 @@ APfit <- function(promoterCounts, modelMatrix, geneIds){
 
 		# Gene counts
 		geneCounts <- data.frame(geneIds=geneIds, promoterCounts) %>%
-			group_by(geneIds) %>%
-			summarise_each(funs(sum)) %>%
-			ungroup
+			dplyr::group_by(geneIds) %>%
+			dplyr::summarise_each(funs(sum)) %>%
+			dplyr::ungroup()
 
 		# Resave as matrix
 		geneCounts <- data.frame(geneCounts[,-1],
@@ -49,6 +49,10 @@ APfit <- function(promoterCounts, modelMatrix, geneIds){
 		dgeGene <- edgeR::DGEList(geneCounts)
 		dgeGene$samples$norm.factors <- dgePromoter$samples$norm.factors
 
+		# Get TPM values
+		tpmPromoter <- edgeR::cpm(x=dgePromoter, normalized.lib.sizes=TRUE, log=TRUE)
+		tpmGene <- edgeR::cpm(x=dgeGene, normalized.lib.sizes=TRUE, log=TRUE)
+
 		### Dispersion
 		message("Estimating Dispersions...")
 		dispPromoter <- edgeR::estimateDisp(y=dgePromoter, design=modelMatrix, robust=TRUE)
@@ -63,6 +67,7 @@ APfit <- function(promoterCounts, modelMatrix, geneIds){
 		o <- list(genes=geneStructure,
 							modelMatrix=modelMatrix,
 							dge=list(promoter=dgePromoter, gene=dgeGene),
+							tpm=list(promoter=tpmPromoter, gene=tpmGene),
 							disp=list(promoter=dispPromoter, gene=dispGene),
 							fit=list(promoter=fitPromoter, gene=fitGene))
 
@@ -184,7 +189,7 @@ APtest <- function(APfitObject, contrast){
 	o
 }
 
-#' Internal function: Test single contrast
+#' Internal function: Classify single contrast
 #'
 #' Called by APclassify
 #'
@@ -216,7 +221,9 @@ singleClassify <- function(con, p=0.05, promoterTest="both", geneTest="both"){
 								nDown=sum(nestedPromoter_FDR < p &
 														nestedPromoter_logFC <= 0 &
 														flatPromoter_FDR < p &
-														nestedPromoter_logFC <= 0)) %>%
+														nestedPromoter_logFC <= 0),
+								geneFDR=unique(nestedGene_FDR),
+								simesFDR=unique(nestedSimes_FDR)) %>%
 			dplyr::filter(!is.na(nPromoter))
 
 	}else{
