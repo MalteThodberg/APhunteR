@@ -22,6 +22,7 @@ plot.APfit <- function(o, gene, stat, grouping=NULL){
 	### Data used in all plots
 	plottingOrder <- o$genes$promoterIds[o$genes$geneIds == gene]
 
+
 	### Plot depending on selected stat
 	if(stat == "BCV"){
 		message(paste0(gene, ": Plotting BCVs..."))
@@ -61,8 +62,8 @@ plot.APfit <- function(o, gene, stat, grouping=NULL){
 		# Plot
 		ggp <- ggplot2::ggplot(E, ggplot2::aes(x=promoterIds, y=logExpression, fill=grouping)) +
 			ggplot2::geom_boxplot(alpha=0.75) +
-			ggplot2::labs(x="Promoter ID", y="log2(Expression)") +
-			ggplot2::scale_fill_brewer("Grouping", palette="Set1") +
+			ggplot2::labs(x="Promoter ID", y="logTPM") +
+			ggplot2::scale_fill_brewer("Grouping", palette="Set2") +
 			ggplot2::theme_bw() +
 			ggplot2::theme(axis.text.x=ggplot2::element_text(angle=90, hjust=1, vjust=0.5))
 
@@ -100,7 +101,8 @@ plot.APtest <- function(o, gene, stat){
 	### Data used in all plots
 
 	# Original order of promoters
-	plottingOrder <- o[[1]]$results$promoterIds[o[[1]]$results$geneIds == gene]
+	promoterOrder <- o[[1]]$results$promoterIds[o[[1]]$results$geneIds == gene]
+	contrastOrder <- names(o)
 
 	# Complete wide data
 	pWide <- lapply(names(o), function(x) dplyr::filter(o[[x]]$results, geneIds==gene) %>%
@@ -119,7 +121,8 @@ plot.APtest <- function(o, gene, stat){
 
 		# Ensure correct order of factors
 		pTidy <- pTidy %>%
-			dplyr::mutate(promoterIds=factor(promoterIds, levels=plottingOrder),
+			dplyr::mutate(promoterIds=factor(promoterIds, levels=promoterOrder),
+										contrast=factor(contrast, levels=contrastOrder),
 										levelOfDE=gsub(pattern="_logFC", replacement="", x=levelOfDE))
 
 		# Plot using ggplot
@@ -146,19 +149,25 @@ plot.APtest <- function(o, gene, stat){
 
 		# Ensure correct order of factors
 		pTidy <- pTidy %>%
-			dplyr::mutate(promoterIds=factor(promoterIds, levels=plottingOrder),
+			dplyr::mutate(promoterIds=factor(promoterIds, levels=promoterOrder),
+										contrast=factor(contrast, levels=contrastOrder),
 										levelOfDE=gsub(pattern="_FDR", replacement="", x=levelOfDE),
-										logpval=-log10(pval))
+										logpval=ifelse(levelOfDE %in% c("flatPromoter", "flatGene"), log10(pval), -log10(pval)))
 
-
-		ggp <- ggplot2::ggplot(pTidy, ggplot2::aes(x=promoterIds, y=logpval,
-														 group=paste0(contrast, levelOfDE),
-														 color=contrast,
-														 linetype=levelOfDE)) +
-			ggplot2::geom_line() +
-			ggplot2::scale_linetype_manual("Level of DE", values=c("dotted", "dashed", "dotdash", "solid", "twodash")) +
+		ggp <- ggplot2::ggplot() +
+			ggplot2::geom_bar(data=filter(pTidy, levelOfDE %in% c("flatPromoter", "nestedPromoter")),
+												ggplot2::aes(x=promoterIds, y=logpval,
+																		 fill=contrast),
+												stat="identity", position="dodge", alpha=0.75) +
+			ggplot2::geom_line(data=filter(pTidy, !levelOfDE %in% c("flatPromoter", "nestedPromoter")),
+												 ggplot2::aes(x=promoterIds, y=logpval,
+												 						 color=contrast, linetype=levelOfDE,
+												 						 group=paste0(contrast, levelOfDE))) +
+			ggplot2::scale_linetype_manual("Level of DE", values=c("dotted", "dashed", "dotdash")) +
 			ggplot2::scale_color_brewer("Contrast", palette="Set1") +
-			ggplot2::labs(x="Promoter ID", y="-log10(pValue)") +
+			ggplot2::scale_fill_brewer("Contrast", palette="Set1") +
+			ggplot2::labs(x="Promoter ID", y="-/+ log10(pValue)\nFlat / Nested") +
+			ggplot2::geom_hline(yintercept=0, alpha=0.75) +
 			ggplot2::theme_bw() +
 			ggplot2::theme(axis.text.x=ggplot2::element_text(angle=90, hjust=1, vjust=0.5))
 
