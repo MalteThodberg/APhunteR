@@ -5,7 +5,7 @@
 \title{Classify genes based on types of APUs}
 \usage{
 APclassify(APtestObject, significanceThreshold = 0.05,
-  promoterTest = "both", geneTest = "both")
+  promoterTest = "nested", geneTest = "simes")
 }
 \arguments{
 \item{APtestObject}{APtest object.}

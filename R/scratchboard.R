@@ -33,8 +33,8 @@
 # 	theme_bw()
 
 
-# ###### IBD
-#
+###### IBD
+
 # source("http://people.binf.ku.dk/~nzl922/BasicSetup.R")
 # source("http://people.binf.ku.dk/~nzl922/BioC.R")
 #
@@ -82,8 +82,8 @@
 #
 # geneIds <- mcols(SE)$transcript
 # geneIds[geneIds == "."] <- paste0("Novel_", 1:sum(geneIds == "."))
-#
-# ### Actual code
+
+### Actual code
 #
 # fits <- APfit(promoterCounts=assay(SE, "counts"), modelMatrix=mod, geneIds=geneIds )
 # tests <- APtest(APfitObject=fits, contrast=con)

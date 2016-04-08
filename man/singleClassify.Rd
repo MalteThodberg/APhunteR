@@ -4,7 +4,7 @@
 \alias{singleClassify}
 \title{Internal function: Classify single contrast}
 \usage{
-singleClassify(con, p = 0.05, promoterTest = "both", geneTest = "both")
+singleClassify(con, p = 0.05, promoterTest, geneTest)
 }
 \arguments{
 \item{con}{numeric: contrast}

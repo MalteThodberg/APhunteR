@@ -204,45 +204,98 @@ APtest <- function(APfitObject, contrast){
 #' @examples
 #' # ADD EXAMPLES HERE
 #' @export
-singleClassify <- function(con, p=0.05, promoterTest="both", geneTest="both"){
+singleClassify <- function(con, p=0.05, promoterTest, geneTest){
 	### Summarise stats based on settings
-	if(promoterTest == "both" & geneTest == "both"){
-		o <- con$results %>%
-			dplyr::group_by(geneIds) %>%
-			dplyr::summarise(nPromoter=unique(nPromoters),
-								geneDE=unique(flatGene_FDR < p),
-								geneDir=ifelse(unique(flatGene_logFC) >= 0, "Up", "Down"),
-								geneAPU=unique(nestedGene_FDR) < p &
-									unique(nestedSimes_FDR) < p,
-								nUp=sum(nestedPromoter_FDR < p &
-													nestedPromoter_logFC >= 0 &
-													flatPromoter_FDR < p &
-													nestedPromoter_logFC >= 0),
-								nDown=sum(nestedPromoter_FDR < p &
-														nestedPromoter_logFC <= 0 &
-														flatPromoter_FDR < p &
-														nestedPromoter_logFC <= 0),
-								geneFDR=unique(nestedGene_FDR),
-								simesFDR=unique(nestedSimes_FDR)) %>%
-			dplyr::filter(!is.na(nPromoter))
+	huge <- con$results %>%
+		dplyr::group_by(geneIds) %>%
+		dplyr::summarise(nPromoter=unique(nPromoters),
+										 # Flat info
+										 geneDE=unique(flatGene_FDR < p),
+										 geneDir=ifelse(unique(flatGene_logFC) >= 0, "Up", "Down"),
+										 # APU info
+										 geneAPUgene=unique(nestedGene_FDR) < p,
+										 geneAPUsimes=unique(nestedSimes_FDR) < p,
+										 geneAPUboth=unique(nestedGene_FDR) < p &
+										 	unique(nestedSimes_FDR) < p,
+										 # Promoter info
+										 nUpFlat=sum(flatPromoter_FDR < p &
+										 							flatPromoter_logFC >= 0),
+										 nUpNested=sum(nestedPromoter_FDR < p &
+										 								nestedPromoter_logFC >= 0),
+										 nUpBoth=sum((nestedPromoter_FDR < p &
+										 						 	nestedPromoter_logFC >= 0) &
+										 							(flatPromoter_FDR < p &
+										 							 	nestedPromoter_logFC >= 0)),
+										 nDownFlat=sum(flatPromoter_FDR < p &
+										 								flatPromoter_logFC <= 0),
+										 nDownNested=sum(nestedPromoter_FDR < p &
+										 									nestedPromoter_logFC <= 0),
+										 nDownBoth=sum((nestedPromoter_FDR < p &
+										 							 	nestedPromoter_logFC <= 0) &
+										 								(flatPromoter_FDR < p &
+										 								 	nestedPromoter_logFC <= 0)),
+										 # Actual gene stats for sorting
+										 geneFDR=unique(nestedGene_FDR),
+										 simesFDR=unique(nestedSimes_FDR)) %>%
+		dplyr::filter(!is.na(nPromoter))
 
+	### Apply selection criteria
+
+	# Extract data needed for all comparisons
+	o <- huge %>% dplyr::select(geneIds, nPromoter, geneDE, geneDir, geneFDR, simesFDR)
+
+	# Append correct gene test
+	if(geneTest == "simes"){
+		o <- dplyr::mutate(o, geneAPU=huge$geneAPUsimes)
+	}else if(geneTest == "gene"){
+		o <- dplyr::mutate(o, geneAPU=huge$geneAPUgene)
+	}else if(geneTest == "both"){
+		o <- dplyr::mutate(o, geneAPU=huge$geneAPUsimes & huge$geneAPUgene)
 	}else{
-		warning("NOT YET IMPLEMENTED")
+		message("Warning: Something went wrong!")
 	}
 
-	### Classify
+	# Append correct promoter test
+	if(promoterTest == "nested"){
+		o <- o %>%
+			dplyr::mutate(nUp=huge$nUpNested,
+										nDown=huge$nDownNested)
+	}else if(promoterTest == "flat"){
+		o <- o %>%
+			dplyr::mutate(nUp=huge$nUpFlat,
+										nDown=huge$nDownFlat)
+	}else if(promoterTest == "both"){
+		o <- o %>%
+			dplyr::mutate(nUp=huge$nUpBoth,
+										nDown=huge$nDownBoth)
+	}else{
+		message("Warning: Something went wrong!")
+	}
+
+	### Classify genes into APU types.
+
+	# Orient direction relative to gene
+	o <- o %>%
+		mutate(nConcordant=ifelse(geneDir=="Up", nUp, nDown),
+					 nOpposite=ifelse(geneDir=="Up", nDown, nUp))
+
+	# Classify
 	o$APUclass <- "NoAPU"
 
 	o <- o %>%
-		dplyr::mutate(APUclass=ifelse(geneAPU == TRUE, "WeakDiffuse", APUclass)) %>%
-		dplyr::mutate(APUclass=ifelse(geneAPU == TRUE & nUp == 0 & nDown == 0 & geneDE==FALSE, "StableDiffuse", APUclass)) %>%
-		dplyr::mutate(APUclass=ifelse(geneAPU == TRUE & nUp == 0 & nDown == 0 & geneDE==TRUE, "ComplexDiffuse", APUclass)) %>%
-		dplyr::mutate(APUclass=ifelse(geneAPU == TRUE & (nUp > 0 | nDown > 0) & geneDE==FALSE, "WeakEmergence", APUclass)) %>%
-		dplyr::	mutate(APUclass=ifelse(geneAPU == TRUE & (nUp > 0 | nDown > 0) & geneDE==TRUE, "StrongEmergence", APUclass)) %>%
-		dplyr::mutate(APUclass=ifelse(geneAPU == TRUE & nUp > 0 & nDown > 0 & geneDE==FALSE, "StableShift", APUclass)) %>%
-		dplyr::mutate(APUclass=ifelse(geneAPU == TRUE & nUp > 0 & nDown > 0 & geneDE==TRUE, "ComplexShift", APUclass)) %>%
-		dplyr::mutate(APUclass=factor(APUclass, levels=c("NoAPU", "StableDiffuse", "ComplexDiffuse", "WeakEmergence", "StrongEmergence", "StableShift", "ComplexShift")))
-
+		dplyr::mutate(APUclass="NoAPU") %>%
+		dplyr::mutate(APUclass=ifelse(geneAPU == TRUE & nConcordant == 0 & nOpposite == 0 & geneDE==FALSE, "StableDiffuse", APUclass)) %>%
+		dplyr::mutate(APUclass=ifelse(geneAPU == TRUE & nConcordant == 0 & nOpposite == 0 & geneDE==TRUE, "ComplexDiffuse", APUclass)) %>%
+		dplyr::mutate(APUclass=ifelse(geneAPU == TRUE & (nConcordant > 0 & nOpposite == 0) & geneDE==FALSE, "WeakEmergence", APUclass)) %>%
+		dplyr::	mutate(APUclass=ifelse(geneAPU == TRUE & (nConcordant > 0 & nOpposite == 0) & geneDE==TRUE, "StrongEmergence", APUclass)) %>%
+		dplyr::mutate(APUclass=ifelse(geneAPU == TRUE & (nConcordant == 0 & nOpposite > 0) & geneDE==FALSE, "WeakRetention", APUclass)) %>%
+		dplyr::	mutate(APUclass=ifelse(geneAPU == TRUE & (nConcordant == 0 & nOpposite > 0) & geneDE==TRUE, "StrongRetention", APUclass)) %>%
+		dplyr::mutate(APUclass=ifelse(geneAPU == TRUE & nConcordant > 0 & nOpposite > 0 & geneDE==FALSE, "StableShift", APUclass)) %>%
+		dplyr::mutate(APUclass=ifelse(geneAPU == TRUE & nConcordant > 0 & nOpposite > 0 & geneDE==TRUE, "ComplexShift", APUclass)) %>%
+		dplyr::mutate(APUclass=factor(APUclass, levels=c("NoAPU", "StableDiffuse", "ComplexDiffuse",
+																										 "WeakRetention", "StrongRetention",
+																										 "WeakEmergence", "StrongEmergence",
+																										 "StableShift", "ComplexShift")))
 	### Return
 	o
 }
@@ -260,12 +313,12 @@ singleClassify <- function(con, p=0.05, promoterTest="both", geneTest="both"){
 #' @examples
 #' # ADD EXAMPLES HERE
 #' @export
-APclassify <- function(APtestObject, significanceThreshold=0.05, promoterTest="both", geneTest="both"){
+APclassify <- function(APtestObject, significanceThreshold=0.05, promoterTest="nested", geneTest="simes"){
 	message("Classifying APU genes...")
 	o <- pbapply::pblapply(APtestObject, function(x) suppressMessages(singleClassify(con=x,
 																																								 p=0.05,
-																																								 promoterTest="both",
-																																								 geneTest="both")))
+																																								 promoterTest=promoterTest,
+																																								 geneTest=geneTest)))
 
 	# Return
 	class(o) <- c("APclassify")#, class(o))

@@ -90,16 +90,19 @@ plot.APfit <- function(o, gene, stat, grouping=NULL){
 #' @examples
 #' # ADD EXAMPLES HERE
 #' @export
-plot.APtest <- function(o, gene, stat){
+plot.APtest <- function(o, contrast=NULL, gene, stat){
 	### IDEAS
 	# Allow for subselection of contrasts
 
 	### Checks
 	stopifnot(gene %in% o[[1]]$results$geneIds)
 	stopifnot(stat %in% c("logFC", "pValue"))
+	stopifnot(is.null(contrast) | contrast %in% names(o))
+
+	### Subset by contrast
+	o <- o[contrast]
 
 	### Data used in all plots
-
 	# Original order of promoters
 	promoterOrder <- o[[1]]$results$promoterIds[o[[1]]$results$geneIds == gene]
 	contrastOrder <- names(o)
@@ -192,6 +195,9 @@ plot.APtest <- function(o, gene, stat){
 #' # ADD EXAMPLES HERE
 #' @export
 plot.APclassify <- function(o, contrast=NULL){
+	### Ideas
+	# Allow for plotting subset of contrast.
+
 	# Always chose single plot if only one contrast
 	if(length(o) == 1){
 		contrast <- names(o)
@@ -201,21 +207,24 @@ plot.APclassify <- function(o, contrast=NULL){
 		message("Plotting APU classification for a single contrast...")
 
 		# Summarise distribution of APUs
-		S <- with(o[[contrast]], table(nUp, nDown, geneDE, geneAPU)) %>%
+		S <- with(o[[contrast]], table(nConcordant, nOpposite, geneDE, geneAPU)) %>%
 			as.data.frame %>%
-			dplyr::mutate(typeAPU=ifelse(nUp != 0 & nDown != 0, "Multidirectional", "Unidirectional")) %>%
-			dplyr::mutate(typeAPU=ifelse(nUp == 0 & nDown == 0, "None", typeAPU))
+			dplyr::mutate(typeAPU=ifelse(nConcordant != 0 & nOpposite != 0, "Multidirectional", "Unidirectional")) %>%
+			dplyr::mutate(typeAPU=ifelse(nConcordant == 0 & nOpposite == 0, "None", typeAPU))
 
 		# Plot
-		ggp <- ggplot2::ggplot(S, ggplot2::aes(x=nUp, y=nDown, fill=log10(Freq), label=Freq, color=typeAPU)) +
+		ggp <- ggplot2::ggplot(S, ggplot2::aes(x=nConcordant, y=nOpposite,
+																					 fill=log10(Freq), label=Freq, color=typeAPU)) +
 			ggplot2::geom_tile() +
 			ggplot2::geom_text() +
 			ggplot2::facet_grid(geneAPU~geneDE, labeller = ggplot2::label_both) +
 			ggplot2::scale_fill_distiller(palette="GnBu", direction="up") +
-			ggplot2::scale_color_manual(values=c("red", "blue", "black")) +
+			ggplot2::scale_color_manual("Directionalities", values=c("red", "blue", "black")) +
 			ggplot2::scale_x_discrete(expand=c(0,0)) +
 			ggplot2::scale_y_discrete(expand=c(0,0)) +
-			ggplot2::ggtitle(paste0("Freq of total multipromoter genes: ", sum(S$Freq))) +
+			ggplot2::labs(title=paste0("Freq of total multipromoter genes: ", sum(S$Freq)),
+										x="Number of concordant promoters",
+										y="Number of opposite promoters") +
 			ggplot2::theme_bw()
 	}else{
 		message("Plotting APU classification for multiple contrasts...")
@@ -223,10 +232,10 @@ plot.APclassify <- function(o, contrast=NULL){
 		# Count classifications
 		M <- sapply(o, function(x) table(x$APUclass))
 		M <- data.frame(APUclass=factor(rownames(M),
-																		levels=c("NoAPU",
-																						 "StableDiffuse", "ComplexDiffuse",
-																						 "WeakEmergence", "StrongEmergence",
-																						 "StableShift", "ComplexShift")), M)
+																		levels=c(c("NoAPU", "StableDiffuse", "ComplexDiffuse",
+																							 "WeakRetention", "StrongRetention",
+																							 "WeakEmergence", "StrongEmergence",
+																							 "StableShift", "ComplexShift"))), M)
 		M <- dplyr::filter(M, APUclass != "NoAPU")
 		M <- tidyr::gather(M, key="contrast", value="count", -APUclass)
 
